@@ -1,5 +1,6 @@
+from distutils.log import error
+import traceback
 import sys
-
 from typing import Callable, NoReturn
 from .exceptions import EvaluatorException, QuitRequestException, UnexpectedCloseParen
 from .environment import StandartEnv
@@ -8,6 +9,7 @@ from .parser import parse
 
 InputFn = Callable[[str], str]
 
+DEBUG_COMMAND = '.d'
 QUIT_COMMAND = '.q'
 ELLIPSIS = '\N{HORIZONTAL ELLIPSIS}'
 
@@ -27,8 +29,11 @@ def repl(prompt1: str = PROMPT1,
     "Read-Eval-Print-Loop"
 
     global_env = StandartEnv()
+    debug = True
 
     print(f'To Exit type {QUIT_COMMAND}', file=sys.stderr)
+    print(
+        f'To enable/disable debug informations type {DEBUG_COMMAND}', file=sys.stderr)
 
     while True:
         # ___________________________________________ Read
@@ -36,6 +41,11 @@ def repl(prompt1: str = PROMPT1,
             source = multiline_input(prompt1, prompt2,
                                      quit_cmd=quit_cmd,
                                      input_fn=input_fn)
+            if source == DEBUG_COMMAND:
+                debug = not debug
+                print(
+                    f'Debug {"enabled" if debug else "disabled"}')
+                continue
         except (EOFError, QuitRequestException, KeyboardInterrupt):
             break
         except UnexpectedCloseParen as exc:
@@ -46,13 +56,24 @@ def repl(prompt1: str = PROMPT1,
 
         # ___________________________________________ Eval
         current_exp = parse(source)
+
+        if debug:
+            print('Tokens', current_exp)
+
         try:
             result = evaluate(current_exp, global_env)
         except EvaluatorException as exc:
             print(error_mark, exc)
+            # traceback.print_exc()
+            continue
+        except LookupError as l:
+            print(error_mark, f' \'{l}\' not defined')
             continue
         except Exception as ex:
             # todo: validate this guy
+            if (debug):
+                traceback.print_exc()
+
             print(error_mark, ex)
             continue
 

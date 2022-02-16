@@ -5,6 +5,8 @@ from .types import Symbol, Number, List
 def evaluate(x, env: Env):
     "Evaluate an expression in an environment."
     if isinstance(x, Symbol):      # variable reference
+        symbol = env.find(x)
+        # print('symbol', symbol)
         return env.find(x)[x]
     elif not isinstance(x, List):  # constant literal
         return x

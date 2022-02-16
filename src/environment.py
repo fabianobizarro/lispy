@@ -2,16 +2,29 @@ import math
 import operator as op
 from .types import Symbol, Number
 
+
 class Env(dict):
     "An environment: a dict of {'var':val} pairs, with an outer Env."
 
     def __init__(self, parms=(), args=(), outer=None):
-        self.update(zip(parms, args))
+        # Bind parm list to corresponding args, or single parm to list of args
         self.outer = outer
+        if isinstance(parms, Symbol):
+            self.update({parms: list(args)})
+        else:
+            if len(args) != len(parms):
+                raise TypeError('expected %s, given %s, '
+                                % (to_string(parms), to_string(args)))
+            self.update(zip(parms, args))
 
     def find(self, var):
         "Find the innermost Env where var appears."
-        return self if (var in self) else self.outer.find(var)
+        if var in self:
+            return self
+        elif self.outer is None:
+            raise LookupError(var)
+        else:
+            return self.outer.find(var)
 
 
 class StandartEnv(Env):
@@ -52,3 +65,24 @@ class StandartEnv(Env):
             'round':   round,
             'symbol?': lambda x: isinstance(x, Symbol),
         })
+
+
+isa = isinstance
+
+
+def to_string(x):
+    "Convert a Python object back into a Lisp-readable string."
+    if x is True:
+        return "#t"
+    elif x is False:
+        return "#f"
+    elif isa(x, Symbol):
+        return x
+    elif isa(x, str):
+        return '"%s"' % x.encode('string_escape').replace('"', r'\"')
+    elif isa(x, list):
+        return '('+' '.join(map(to_string, x))+')'
+    elif isa(x, complex):
+        return str(x).replace('j', 'i')
+    else:
+        return str(x)
